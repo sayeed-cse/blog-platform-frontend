@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PostCard } from '@/components/posts/post-card';
-import { api } from '@/lib/api';
+import { api, LIVE_REFETCH_INTERVAL } from '@/lib/api';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useMe } from '@/hooks/use-auth';
 import { Post, Bookmark } from '@/types';
@@ -23,7 +23,9 @@ export default function HomePage() {
         params: debouncedSearch ? { search: debouncedSearch } : undefined
       });
       return response.data.data as Post[];
-    }
+    },
+    refetchInterval: LIVE_REFETCH_INTERVAL,
+    refetchIntervalInBackground: true
   });
 
   const bookmarksQuery = useQuery<Bookmark[]>({
@@ -33,7 +35,9 @@ export default function HomePage() {
       return response.data.data as Bookmark[];
     },
     enabled: !!me,
-    retry: false
+    retry: false,
+    refetchInterval: me ? LIVE_REFETCH_INTERVAL : false,
+    refetchIntervalInBackground: true
   });
 
   const bookmarkedIds = useMemo(
@@ -56,6 +60,7 @@ export default function HomePage() {
               This assignment-ready project includes secure authentication, profile management, post creation with image uploads,
               threaded comments up to five levels, keyword search, bookmarking, and a responsive user interface.
             </p>
+            <p className="mt-3 text-sm text-emerald-300">Live data refreshes every 3 seconds automatically.</p>
           </div>
           <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
             <div className="relative">

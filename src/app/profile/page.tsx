@@ -57,9 +57,7 @@ export default function ProfilePage() {
       if (avatarFile) {
         formData.append('avatar', avatarFile);
       }
-      await api.patch('/users/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.patch('/users/profile', formData);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -131,7 +129,7 @@ export default function ProfilePage() {
                   Remove current photo
                 </Button>
               ) : null}
-              <p className="text-xs text-slate-400">Select an image from your computer. URL input is removed as requested.</p>
+              <p className="text-xs text-slate-400">Select an image from your computer. It will be stored online.</p>
             </div>
           </div>
 

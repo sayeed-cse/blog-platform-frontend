@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { PostInput, postSchema } from '@/schemas/post';
 
 export default function CreatePostPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: me, isLoading } = useMe();
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -41,12 +42,14 @@ export default function CreatePostPage() {
       formData.append('content', values.content);
       formData.append('tags', values.tags || '');
       if (imageFile) formData.append('image', imageFile);
-      const response = await api.post('/posts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.post('/posts', formData);
       return response.data.data;
     },
-    onSuccess: (post) => {
+    onSuccess: async (post) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['posts'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-posts'] })
+      ]);
       toast.success('Post created successfully');
       router.push(`/posts/${post._id}`);
     },
@@ -102,7 +105,7 @@ export default function CreatePostPage() {
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-200">Upload Post Image</label>
             <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
-            <p className="mt-2 text-xs text-slate-400">Choose an image from your device. External image URL support has been removed.</p>
+            <p className="mt-2 text-xs text-slate-400">Choose an image from your device. It will be uploaded online through Cloudinary.</p>
           </div>
 
           <Button type="submit" disabled={mutation.isPending}>

@@ -14,6 +14,46 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { getAssetUrl, timeAgo } from '@/lib/utils';
 
+function CommentEditor({
+  defaultValue = '',
+  submitLabel,
+  placeholder,
+  onSubmit,
+  onCancel,
+  isPending
+}: {
+  defaultValue?: string;
+  submitLabel: string;
+  placeholder: string;
+  onSubmit: (values: CommentInput) => void;
+  onCancel?: () => void;
+  isPending?: boolean;
+}) {
+  const form = useForm<CommentInput>({
+    resolver: zodResolver(commentSchema),
+    defaultValues: { content: defaultValue }
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+      <Textarea placeholder={placeholder} {...form.register('content')} />
+      {form.formState.errors.content ? (
+        <p className="text-sm text-red-400">{form.formState.errors.content.message}</p>
+      ) : null}
+      <div className="flex gap-2">
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : submitLabel}
+        </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
 function ReplyForm({
   postId,
   parentCommentId,
@@ -24,10 +64,6 @@ function ReplyForm({
   onDone?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const form = useForm<CommentInput>({
-    resolver: zodResolver(commentSchema),
-    defaultValues: { content: '' }
-  });
 
   const mutation = useMutation({
     mutationFn: async (values: CommentInput) => {
@@ -38,7 +74,6 @@ function ReplyForm({
       });
     },
     onSuccess: async () => {
-      form.reset();
       await queryClient.invalidateQueries({ queryKey: ['comments', postId] });
       toast.success(parentCommentId ? 'Reply added' : 'Comment added');
       onDone?.();
@@ -47,22 +82,48 @@ function ReplyForm({
   });
 
   return (
-    <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-3">
-      <Textarea placeholder="Write your comment..." {...form.register('content')} />
-      {form.formState.errors.content ? (
-        <p className="text-sm text-red-400">{form.formState.errors.content.message}</p>
-      ) : null}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Submitting...' : parentCommentId ? 'Reply' : 'Comment'}
-        </Button>
-        {onDone ? (
-          <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
-          </Button>
-        ) : null}
-      </div>
-    </form>
+    <CommentEditor
+      submitLabel={parentCommentId ? 'Reply' : 'Comment'}
+      placeholder="Write your comment..."
+      onSubmit={(values) => mutation.mutate(values)}
+      onCancel={onDone}
+      isPending={mutation.isPending}
+    />
+  );
+}
+
+function EditCommentForm({
+  comment,
+  postId,
+  onDone
+}: {
+  comment: CommentNode;
+  postId: string;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (values: CommentInput) => {
+      await api.patch(`/comments/${comment._id}`, values);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+      toast.success('Comment updated');
+      onDone();
+    },
+    onError: (error) => toast.error(getErrorMessage(error))
+  });
+
+  return (
+    <CommentEditor
+      defaultValue={comment.content}
+      submitLabel="Update"
+      placeholder="Edit your comment..."
+      onSubmit={(values) => mutation.mutate(values)}
+      onCancel={onDone}
+      isPending={mutation.isPending}
+    />
   );
 }
 
@@ -70,6 +131,7 @@ function CommentItem({ comment, postId }: { comment: CommentNode; postId: string
   const { data: me } = useMe();
   const queryClient = useQueryClient();
   const [showReply, setShowReply] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -81,6 +143,8 @@ function CommentItem({ comment, postId }: { comment: CommentNode; postId: string
     },
     onError: (error) => toast.error(getErrorMessage(error))
   });
+
+  const isOwner = me?._id === comment.user?._id;
 
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
@@ -97,18 +161,27 @@ function CommentItem({ comment, postId }: { comment: CommentNode; postId: string
           </div>
         </div>
 
-        {me?._id === comment.user?._id ? (
-          <Button
-            variant="ghost"
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-          >
-            Delete
-          </Button>
+        {isOwner ? (
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setIsEditing((prev) => !prev)}>
+              {isEditing ? 'Close' : 'Edit'}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              Delete
+            </Button>
+          </div>
         ) : null}
       </div>
 
-      <p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">{comment.content}</p>
+      {isEditing ? (
+        <EditCommentForm comment={comment} postId={postId} onDone={() => setIsEditing(false)} />
+      ) : (
+        <p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">{comment.content}</p>
+      )}
 
       <div className="flex items-center gap-3">
         {comment.depth < 4 && me ? (
@@ -140,7 +213,8 @@ export function CommentThread({ postId, comments }: { postId: string; comments: 
     <Card className="p-6">
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-white">Comment</h3>
+          <h3 className="text-xl font-semibold text-white">Comments & Replies</h3>
+          <p className="text-sm text-slate-400">Create, edit, reply to, and delete discussion threads in real time.</p>
         </div>
       </div>
 
@@ -150,7 +224,7 @@ export function CommentThread({ postId, comments }: { postId: string; comments: 
         </div>
       ) : (
         <p className="mb-8 rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
-          Please login to join the Comment.
+          Please login to join the comment thread.
         </p>
       )}
 

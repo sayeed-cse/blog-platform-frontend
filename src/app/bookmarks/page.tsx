@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useMe } from '@/hooks/use-auth';
-import { api } from '@/lib/api';
+import { api, LIVE_REFETCH_INTERVAL } from '@/lib/api';
 import { Bookmark } from '@/types';
 
 export default function BookmarksPage() {
@@ -19,7 +19,9 @@ export default function BookmarksPage() {
       const response = await api.get('/bookmarks');
       return response.data.data as Bookmark[];
     },
-    enabled: !!me
+    enabled: !!me,
+    refetchInterval: me ? LIVE_REFETCH_INTERVAL : false,
+    refetchIntervalInBackground: true
   });
 
   if (meLoading) return <p className="text-slate-400">Loading...</p>;
@@ -44,6 +46,7 @@ export default function BookmarksPage() {
       <div>
         <h1 className="text-3xl font-bold text-white">Saved Posts</h1>
         <p className="mt-2 text-slate-400">All your bookmarked articles in one place.</p>
+        <p className="mt-1 text-sm text-emerald-300">Saved posts sync every 3 seconds.</p>
       </div>
 
       {bookmarksQuery.isLoading ? (

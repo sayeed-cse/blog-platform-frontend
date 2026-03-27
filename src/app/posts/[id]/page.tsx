@@ -1,17 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useParams, useRouter } from 'next/navigation';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CommentThread } from '@/components/comments/comment-thread';
-import { api } from '@/lib/api';
+import { useMe } from '@/hooks/use-auth';
+import { api, getErrorMessage, LIVE_REFETCH_INTERVAL } from '@/lib/api';
 import { getAssetUrl, timeAgo } from '@/lib/utils';
 import { CommentNode, Post } from '@/types';
 
 export default function PostDetailsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: me } = useMe();
   const postId = params.id;
 
   const postQuery = useQuery<Post>({
@@ -20,7 +25,9 @@ export default function PostDetailsPage() {
       const response = await api.get(`/posts/${postId}`);
       return response.data.data as Post;
     },
-    enabled: !!postId
+    enabled: !!postId,
+    refetchInterval: LIVE_REFETCH_INTERVAL,
+    refetchIntervalInBackground: true
   });
 
   const commentsQuery = useQuery<CommentNode[]>({
@@ -29,7 +36,25 @@ export default function PostDetailsPage() {
       const response = await api.get(`/comments/post/${postId}`);
       return response.data.data as CommentNode[];
     },
-    enabled: !!postId
+    enabled: !!postId,
+    refetchInterval: LIVE_REFETCH_INTERVAL,
+    refetchIntervalInBackground: true
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/posts/${postId}`);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['posts'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-posts'] }),
+        queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+      ]);
+      toast.success('Post deleted successfully');
+      router.push('/my-posts');
+    },
+    onError: (error) => toast.error(getErrorMessage(error))
   });
 
   if (postQuery.isLoading) {
@@ -49,6 +74,7 @@ export default function PostDetailsPage() {
   }
 
   const post = postQuery.data;
+  const isOwner = me?._id === post.author?._id;
 
   return (
     <div className="space-y-8">
@@ -79,6 +105,20 @@ export default function PostDetailsPage() {
           ) : null}
 
           <div className="whitespace-pre-wrap text-base leading-8 text-slate-200">{post.content}</div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
+            <p className="text-sm text-emerald-300">Live post and comments refresh every 3 seconds.</p>
+            {isOwner ? (
+              <>
+                <Link href={`/edit-post/${post._id}`}>
+                  <Button variant="outline">Edit Post</Button>
+                </Link>
+                <Button variant="danger" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete Post'}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       </article>
 

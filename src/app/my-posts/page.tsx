@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useMe } from '@/hooks/use-auth';
-import { api, getErrorMessage } from '@/lib/api';
+import { api, getErrorMessage, LIVE_REFETCH_INTERVAL } from '@/lib/api';
 import { Post } from '@/types';
 
 export default function MyPostsPage() {
@@ -21,7 +21,9 @@ export default function MyPostsPage() {
       const response = await api.get('/posts/me');
       return response.data.data as Post[];
     },
-    enabled: !!me
+    enabled: !!me,
+    refetchInterval: me ? LIVE_REFETCH_INTERVAL : false,
+    refetchIntervalInBackground: true
   });
 
   const deleteMutation = useMutation({
@@ -59,6 +61,7 @@ export default function MyPostsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">My Posts</h1>
           <p className="mt-2 text-slate-400">Manage your published articles and update them anytime.</p>
+          <p className="mt-1 text-sm text-emerald-300">Auto-sync refreshes every 3 seconds.</p>
         </div>
         <Link href="/create-post">
           <Button>Create New Post</Button>

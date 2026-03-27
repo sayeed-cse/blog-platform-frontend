@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ import { getAssetUrl } from '@/lib/utils';
 export default function EditPostPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: me, isLoading: meLoading } = useMe();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
@@ -68,11 +69,14 @@ export default function EditPostPage() {
       formData.append('tags', values.tags || '');
       formData.append('removeImage', String(removeImage && !imageFile));
       if (imageFile) formData.append('image', imageFile);
-      await api.patch(`/posts/${params.id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.patch(`/posts/${params.id}`, formData);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['post', params.id] }),
+        queryClient.invalidateQueries({ queryKey: ['posts'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-posts'] })
+      ]);
       toast.success('Post updated successfully');
       router.push(`/posts/${params.id}`);
     },
@@ -107,7 +111,7 @@ export default function EditPostPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Edit post</h1>
-        <p className="mt-2 text-slate-400">Update the title, body, tags, and post image from local storage.</p>
+        <p className="mt-2 text-slate-400">Update the title, body, tags, and post image from online cloud storage.</p>
       </div>
 
       <Card className="overflow-hidden">
@@ -158,7 +162,7 @@ export default function EditPostPage() {
                   Remove current image
                 </Button>
               ) : null}
-              <p className="text-xs text-slate-400">Only local file upload is supported now.</p>
+              <p className="text-xs text-slate-400">Images are stored online and can be replaced anytime.</p>
             </div>
           </div>
 
