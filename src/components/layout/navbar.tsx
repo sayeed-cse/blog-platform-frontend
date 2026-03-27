@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bookmark, LogOut, PenSquare, UserRound } from 'lucide-react';
+import { Bookmark, House, LogOut, PenSquare, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, getErrorMessage } from '@/lib/api';
 import { useMe } from '@/hooks/use-auth';
@@ -34,6 +34,11 @@ export function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-2">
+          <Link href="/" className="text-xl font-bold tracking-tight text-white">
+            <Button variant="ghost" className="gap-2">
+              <House size={16} />
+            </Button>
+          </Link>
           <Link href="/create-post">
             <Button variant="ghost" className="gap-2">
               <PenSquare size={16} />

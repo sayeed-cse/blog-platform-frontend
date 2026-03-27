@@ -213,8 +213,7 @@ export function CommentThread({ postId, comments }: { postId: string; comments: 
     <Card className="p-6">
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-white">Comments & Replies</h3>
-          <p className="text-sm text-slate-400">Create, edit, reply to, and delete discussion threads in real time.</p>
+          <h3 className="text-xl font-semibold text-white">Comments</h3>
         </div>
       </div>
 

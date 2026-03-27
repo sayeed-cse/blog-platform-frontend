@@ -107,7 +107,6 @@ export default function PostDetailsPage() {
           <div className="whitespace-pre-wrap text-base leading-8 text-slate-200">{post.content}</div>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
-            <p className="text-sm text-emerald-300">Live post and comments refresh every 3 seconds.</p>
             {isOwner ? (
               <>
                 <Link href={`/edit-post/${post._id}`}>

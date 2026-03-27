@@ -57,10 +57,9 @@ export default function HomePage() {
               Publish, explore, comment, reply, search, and bookmark in one full-stack blog app.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-8 text-slate-300">
-              This assignment-ready project includes secure authentication, profile management, post creation with image uploads,
+              This blog project includes secure authentication, profile management, post creation with image uploads,
               threaded comments up to five levels, keyword search, bookmarking, and a responsive user interface.
             </p>
-            <p className="mt-3 text-sm text-emerald-300">Live data refreshes every 3 seconds automatically.</p>
           </div>
           <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
             <div className="relative">
